@@ -183,6 +183,154 @@ async def admin_password(m: Message):
         [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")]
     ])
 )
+@dp.callback_query(F.data == "admin_numbers")
+async def admin_numbers(c: CallbackQuery):
+    if c.from_user.id != ADMIN_ID:
+        return
+
+    async with aiosqlite.connect(DB) as db:
+        rows = await (await db.execute("""
+            SELECT numbers.number, services.name, numbers.sold
+            FROM numbers
+            LEFT JOIN services ON services.id = numbers.service_id
+            ORDER BY numbers.id DESC
+        """)).fetchall()
+
+    if not rows:
+        text = "📱 Номера\n\nНомеров пока нет."
+    else:
+        text = "📱 Номера:\n\n"
+        for number, service, sold in rows:
+            status = "🔴 Продан" if sold else "🟢 Свободен"
+            text += f"{number} — {service or 'Без услуги'} — {status}\n"
+
+    await c.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="admin_back")]
+        ])
+    )
+    await c.answer()
+
+
+@dp.callback_query(F.data == "admin_numbers")
+async def admin_numbers(c: CallbackQuery):
+    if c.from_user.id != ADMIN_ID:
+        return
+
+    async with aiosqlite.connect(DB) as db:
+        cur = await db.execute("""
+            SELECT numbers.number, services.name, numbers.sold
+            FROM numbers
+            LEFT JOIN services ON numbers.service_id = services.id
+            ORDER BY numbers.id DESC
+        """)
+        rows = await cur.fetchall()
+
+    text = "📱 Номера:\n\n"
+
+    if not rows:
+        text += "Номеров пока нет."
+    else:
+        for number, service, sold in rows:
+            status = "🔴 Продан" if sold else "🟢 Свободен"
+            text += f"• {number} — {service or 'Без сервиса'} — {status}\n"
+
+    await c.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="admin_back")]
+        ])
+    )
+    await c.answer()
+@dp.callback_query(F.data == "admin_prices")
+async def admin_prices(c: CallbackQuery):
+    if c.from_user.id != ADMIN_ID:
+        return
+
+    async with aiosqlite.connect(DB) as db:
+        rows = await (await db.execute("""
+            SELECT name, price
+            FROM services
+            ORDER BY id
+        """)).fetchall()
+
+    text = "💰 Цены:\n\n"
+
+    if not rows:
+        text += "Услуг пока нет."
+    else:
+        for name, price in rows:
+            text += f"• {name}: {price:.2f} ₽\n"
+
+    await c.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="admin_back")]
+        ])
+    )
+    await c.answer()
+
+
+@dp.callback_query(F.data == "admin_stats")
+async def admin_stats(c: CallbackQuery):
+    if c.from_user.id != ADMIN_ID:
+        return
+
+    async with aiosqlite.connect(DB) as db:
+        users = (await (await db.execute(
+            "SELECT COUNT(*) FROM users"
+        )).fetchone())[0]
+
+        numbers = (await (await db.execute(
+            "SELECT COUNT(*) FROM numbers"
+        )).fetchone())[0]
+
+        free_numbers = (await (await db.execute(
+            "SELECT COUNT(*) FROM numbers WHERE sold = 0"
+        )).fetchone())[0]
+
+        sold_numbers = (await (await db.execute(
+            "SELECT COUNT(*) FROM numbers WHERE sold = 1"
+        )).fetchone())[0]
+
+        orders = (await (await db.execute(
+            "SELECT COUNT(*) FROM orders"
+        )).fetchone())[0]
+
+    text = (
+        "📊 Статистика\n\n"
+        f"👥 Пользователей: {users}\n"
+        f"📱 Всего номеров: {numbers}\n"
+        f"🟢 Свободных: {free_numbers}\n"
+        f"🔴 Проданных: {sold_numbers}\n"
+        f"🛒 Заказов: {orders}"
+    )
+
+    await c.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="admin_back")]
+        ])
+    )
+    await c.answer()
+
+
+@dp.callback_query(F.data == "admin_back")
+async def admin_back(c: CallbackQuery):
+    if c.from_user.id != ADMIN_ID:
+        return
+
+    await c.message.edit_text(
+        "🛠 Админка открыта.\n\nВыберите действие:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📱 Номера", callback_data="admin_numbers")],
+            [InlineKeyboardButton(text="💰 Цены", callback_data="admin_prices")],
+            [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")]
+        ])
+    )
+    await c.answer()
+
 
 async def main():
     if not BOT_TOKEN: raise RuntimeError("BOT_TOKEN не задан в .env")
