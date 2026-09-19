@@ -250,27 +250,62 @@ async def admin_prices(c: CallbackQuery):
 
     async with aiosqlite.connect(DB) as db:
         rows = await (await db.execute("""
-            SELECT name, price
+            SELECT id, name, price
             FROM services
             ORDER BY id
         """)).fetchall()
 
-    text = "💰 Цены:\n\n"
+    kb = []
 
-    if not rows:
-        text += "Услуг пока нет."
-    else:
-        for name, price in rows:
-            text += f"• {name}: {price:.2f} ₽\n"
+    for service_id, name, price in rows:
+        kb.append([
+            InlineKeyboardButton(
+                text=f"{name}: {price:.2f} ₽",
+                callback_data=f"admin_price:{service_id}"
+            )
+        ])
+
+    kb.append([
+        InlineKeyboardButton(
+            text="⬅️ Назад",
+            callback_data="admin_back"
+        )
+    ])
 
     await c.message.edit_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="⬅️ Назад", callback_data="admin_back")]
-        ])
+        "💰 Цены:\n\nВыберите услугу, чтобы изменить цену:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
     )
-    await c.answer()
 
+    await c.answer()
+admin_price_waiting = {}
+
+@dp.callback_query(F.data.startswith("admin_price:"))
+async def admin_price(c: CallbackQuery):
+    if c.from_user.id != ADMIN_ID:
+        return
+
+    service_id = int(c.data.split(":")[1])
+
+    async with aiosqlite.connect(DB) as db:
+        row = await (await db.execute(
+            "SELECT name, price FROM services WHERE id=?",
+            (service_id,)
+        )).fetchone()
+
+    if not row:
+        await c.answer("❌ Услуга не найдена", show_alert=True)
+        return
+
+    admin_price_waiting[c.from_user.id] = service_id
+
+    await c.message.answer(
+        f"💰 {row[0]}\n\n"
+        f"Текущая цена: {row[1]:.2f} ₽\n\n"
+        "Введите новую цену, например: 25 или 25.50"
+    )
+
+    await c.answer()
 
 @dp.callback_query(F.data == "admin_stats")
 async def admin_stats(c: CallbackQuery):
