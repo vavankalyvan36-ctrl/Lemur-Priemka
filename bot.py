@@ -175,7 +175,14 @@ async def admin(m: Message):
 @dp.message()
 async def admin_password(m: Message):
     if m.from_user.id == ADMIN_ID and m.text == ADMIN_PASSWORD:
-        await m.answer("🛠 Админка открыта. Управление номерами и ценами добавляется в следующей версии.")
+        await m.answer(
+    "🛠 Админка открыта.\n\nВыберите действие:",
+    reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📱 Номера", callback_data="admin_numbers")],
+        [InlineKeyboardButton(text="💰 Цены", callback_data="admin_prices")],
+        [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")]
+    ])
+)
 
 async def main():
     if not BOT_TOKEN: raise RuntimeError("BOT_TOKEN не задан в .env")
