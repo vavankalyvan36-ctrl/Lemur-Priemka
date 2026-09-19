@@ -1,5 +1,5 @@
 const app=document.getElementById('app');
-const services=['Telegram','MAX','VK','WhatsApp','Яндекс','Instagram','Google','Facebook','Wildberries','Ozon'];
+const serviceNames=['Telegram','MAX','VK','WhatsApp','Яндекс','Instagram','Google','Facebook','Wildberries','Ozon'];
 const s={user:null,screen:'home',mode:null,service:null,listings:[],orders:[]};
 const e=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function render(){({home,login,register,services:list,offers,sell,order,orders,balance,support}[s.screen]||home)()}
